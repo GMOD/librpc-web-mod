@@ -1,16 +1,25 @@
 {
-  "include": ["src"],
+  "include": [
+    "src"
+  ],
   "compilerOptions": {
     "outDir": "dist",
-    "target": "es2018",
-    "types": ["node", "jest"],
-    "lib": ["dom", "esnext", "webworker"],
+    "target": "es2020",
+    "lib": [
+      "dom",
+      "esnext",
+      "webworker"
+    ],
     "declaration": true,
     "moduleResolution": "node",
+    "sourceMap": true,
     "strict": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
+    "skipLibCheck": true
   }
 }

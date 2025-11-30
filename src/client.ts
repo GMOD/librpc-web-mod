@@ -1,81 +1,38 @@
-import EventEmitter from './ee'
-import { peekTransferables, uuid } from './utils'
 import { deserializeError } from 'serialize-error'
 
-interface RpcClientOptions {
-  /** List of server workers */
-  workers: Worker[]
+import EventEmitter from './ee.ts'
+
+interface RpcMessageData {
+  uid: string
+  libRpc?: true
+  error?: string
+  method?: string
+  eventName?: string
+  data: unknown
 }
 
-interface RpcEvent {
-  /** Message event data */
-  data: {
-    /** Remote call uid */
-    uid: string
-    /** `true` flag */
-    libRpc: true
-    /** Error description */
-    error?: string
-    /** Remote procedure name */
-    method?: string
-    /** Server event name */
-    eventName?: string
-    /** Procedure result or event data */
-    data: any
-  }
-}
-
-interface RpcErrorEvent extends ErrorEvent {
-  /** Error ignored if this is not true */
-  libRpc?: boolean
-}
-
+let counter = 0
 
 export default class RpcClient extends EventEmitter {
-  public workers: Worker[]
-  protected idx = 0
-  protected calls: Record<string, (data: any) => void> = {}
-  protected timeouts: Record<string, NodeJS.Timeout> = {}
-  protected errors: Record<string, (error: Error) => void> = {}
+  protected calls = new Map<string, (data: unknown) => void>()
+  protected timeouts = new Map<string, ReturnType<typeof setTimeout>>()
+  protected errors = new Map<string, (error: Error) => void>()
 
-  /**
-   * Client could be connected to several workers for better CPU utilization.
-   * Requests are sent to an exact worker by round robin algorithm.
-   * @param options - Rpc Client options
-   */
-  constructor({ workers }: RpcClientOptions) {
+  constructor(public worker: Worker) {
     super()
-    this.workers = [...workers]
-    this.handler = this.handler.bind(this)
-    this.catch = this.catch.bind(this)
-    this.init()
+    this.worker.addEventListener('message', (e: MessageEvent<RpcMessageData>) => {
+      this.handler(e)
+    })
+    this.worker.addEventListener('error', (e: ErrorEvent) => {
+      this.catch(e)
+    })
   }
 
-  /**
-   * Subscribtion to web workers events
-   */
-  protected init() {
-    this.workers.forEach(this.listen, this)
-  }
-
-  /**
-   * Subsrciption to exact worker
-   * @param worker - Server worker
-   */
-  protected listen(worker: Worker) {
-    worker.addEventListener('message', this.handler)
-    worker.addEventListener('error', this.catch)
-  }
-
-  /**
-   * Message handler
-   * @param e - Event object
-   */
-  protected handler(e: RpcEvent) {
-    var { uid, error, method, eventName, data, libRpc } = e.data
-
-    if (!libRpc) return // ignore non-librpc messages
-
+  protected handler(e: MessageEvent<RpcMessageData>) {
+    const { uid, error, method, eventName, data, libRpc } = e.data
+    if (!libRpc) {
+      return
+    }
     if (error) {
       this.reject(uid, error)
     } else if (method) {
@@ -85,87 +42,59 @@ export default class RpcClient extends EventEmitter {
     }
   }
 
-  /**
-   * Error handler
-   * https://www.nczonline.net/blog/2009/08/25/web-workers-errors-and-debugging/
-   * @param options - Error handler options
-   */
-  catch({ message, lineno, filename, libRpc }: RpcErrorEvent) {
-    if (libRpc) {
-      this.emit('error', {
-        message,
-        lineno,
-        filename,
-      })
-    }
+  protected catch(e: ErrorEvent) {
+    this.emit('error', {
+      message: e.message,
+      lineno: e.lineno,
+      filename: e.filename,
+    })
   }
 
-  /**
-   * Handle remote procedure call error
-   * @param uid - Remote call uid
-   * @param error - Error message
-   */
   protected reject(uid: string, error: string | Error) {
-    if (this.errors[uid]) {
-      this.errors[uid](deserializeError(error))
+    const errorFn = this.errors.get(uid)
+    if (errorFn) {
+      errorFn(deserializeError(error))
       this.clear(uid)
     }
   }
 
-  /**
-   * Handle remote procedure call response
-   * @param uid - Remote call uid
-   * @param data - Response data
-   */
-  protected resolve(uid: string, data: any) {
-    if (this.calls[uid]) {
-      this.calls[uid](data)
+  protected resolve(uid: string, data: unknown) {
+    const callFn = this.calls.get(uid)
+    if (callFn) {
+      callFn(data)
       this.clear(uid)
     }
   }
 
-  /**
-   * Clear inner references to remote call
-   * @param uid - Remote call uid
-   */
   protected clear(uid: string) {
-    clearTimeout(this.timeouts[uid])
-    delete this.timeouts[uid]
-    delete this.calls[uid]
-    delete this.errors[uid]
+    const timeout = this.timeouts.get(uid)
+    if (timeout !== undefined) {
+      clearTimeout(timeout)
+    }
+    this.timeouts.delete(uid)
+    this.calls.delete(uid)
+    this.errors.delete(uid)
   }
 
-  /**
-   * Remote procedure call. Only ArrayBuffers will be transferred automatically (not TypedArrays).
-   * Error would be thrown, if:
-   * - it happened during procedure
-   * - you try to call an unexisted procedure
-   * - procedure execution takes more than timeout
-   * @param method - Remote procedure name
-   * @param data - Request data
-   * @param options - Options
-   * @returns Remote procedure promise
-   */
-  call(method: string, data: any, { timeout = 2000 }: any = {}) {
-    var uid = uuid()
-    var transferables = peekTransferables(data)
+  call(
+    method: string,
+    data: unknown,
+    {
+      timeout = 2000,
+      transferables = [],
+    }: { timeout?: number; transferables?: Transferable[] } = {},
+  ) {
+    const uid = String(++counter)
     return new Promise((resolve, reject) => {
-      this.timeouts[uid] = setTimeout(
-        () =>
-          this.reject(
-            uid,
-            new Error(`Timeout exceeded for RPC method "${method}"`),
-          ),
-        timeout,
+      this.timeouts.set(
+        uid,
+        setTimeout(() => {
+          this.reject(uid, new Error(`Timeout exceeded for RPC method "${method}"`))
+        }, timeout),
       )
-      this.calls[uid] = resolve
-      this.errors[uid] = reject
-      this.workers[this.idx].postMessage(
-        { method, uid, data, libRpc: true },
-        transferables,
-      )
-      this.idx = ++this.idx % this.workers.length // round robin
+      this.calls.set(uid, resolve)
+      this.errors.set(uid, reject)
+      this.worker.postMessage({ method, uid, data, libRpc: true }, transferables)
     })
   }
 }
-

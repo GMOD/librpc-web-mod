@@ -1,7 +1,8 @@
-//@ts-nocheck
-var EventEmitter = require('events')
+// @ts-nocheck
+import { expect, test } from 'vitest'
+import { EventEmitter } from 'events'
 
-import WebRPC from '../src/'
+import { RpcClient, RpcServer } from '../src/index.ts'
 
 class EventTarget extends EventEmitter {
   addEventListener(event, listener) {
@@ -23,7 +24,7 @@ function wait(time) {
   return new Promise(resolve => setTimeout(resolve, time))
 }
 
-var server = new WebRPC.Server({
+const server = new RpcServer({
   add({ x, y }) {
     return x + y
   },
@@ -32,18 +33,16 @@ var server = new WebRPC.Server({
   },
   error() {
     return err
-  }, // eslint-disable-line
+  },
   transfer(buffer) {
     return { buffer }
   },
 })
 
-var client = new WebRPC.Client({
-  workers: [global.worker],
-})
+const client = new RpcClient(global.worker)
 
 test('RpcServer.constructor()', () => {
-  expect(server instanceof WebRPC.Server).toBeTruthy()
+  expect(server instanceof RpcServer).toBeTruthy()
   expect(Object.keys(server.methods)).toEqual([
     'add',
     'task',
@@ -63,9 +62,8 @@ test('RpcServer.emit()', () => {
   server.emit('event', { foo: 'bar' })
 })
 
-test('RpcClient.constructor() should create new RPC client', () => {
-  expect(client instanceof WebRPC.Client).toBeTruthy()
-  expect(client.workers.length).toEqual(1)
+test('RpcClient.constructor()', () => {
+  expect(client instanceof RpcClient).toBeTruthy()
   expect(global.worker.eventNames()).toEqual(['message', 'error'])
   global.worker.emit('error', {
     message: 'Some error',
@@ -75,16 +73,13 @@ test('RpcClient.constructor() should create new RPC client', () => {
 })
 
 test('RpcClient.call()', async () => {
-  var result = await client.call('add', { x: 1, y: 1 })
+  const result = await client.call('add', { x: 1, y: 1 })
   expect(result).toBe(2)
-  expect(client.idx).toBe(0)
   await expect(() => client.call('length')).rejects.toThrow()
   await expect(() =>
     client.call('task', null, { timeout: 100 }),
   ).rejects.toThrow()
-  await expect(() => client.call('error')).rejects.toThrowError(
-    'err is not defined',
-  )
+  await expect(() => client.call('error')).rejects.toThrow('err is not defined')
 
   const buffer = new ArrayBuffer(0xff)
 
