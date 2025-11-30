@@ -2,7 +2,7 @@
 import { expect, test } from 'vitest'
 import { EventEmitter } from 'events'
 
-import { Client, Server } from '../src/index.ts'
+import { RpcClient, RpcServer } from '../src/index.ts'
 
 class EventTarget extends EventEmitter {
   addEventListener(event, listener) {
@@ -24,7 +24,7 @@ function wait(time) {
   return new Promise(resolve => setTimeout(resolve, time))
 }
 
-const server = new Server({
+const server = new RpcServer({
   add({ x, y }) {
     return x + y
   },
@@ -39,10 +39,10 @@ const server = new Server({
   },
 })
 
-const client = new Client(global.worker)
+const client = new RpcClient(global.worker)
 
-test('Server.constructor()', () => {
-  expect(server instanceof Server).toBeTruthy()
+test('RpcServer.constructor()', () => {
+  expect(server instanceof RpcServer).toBeTruthy()
   expect(Object.keys(server.methods)).toEqual([
     'add',
     'task',
@@ -52,7 +52,7 @@ test('Server.constructor()', () => {
   expect(global.self.eventNames()).toEqual(['message'])
 })
 
-test('Server.emit()', () => {
+test('RpcServer.emit()', () => {
   function listener(data) {
     expect(data).toEqual({ foo: 'bar' })
   }
@@ -62,8 +62,8 @@ test('Server.emit()', () => {
   server.emit('event', { foo: 'bar' })
 })
 
-test('Client.constructor()', () => {
-  expect(client instanceof Client).toBeTruthy()
+test('RpcClient.constructor()', () => {
+  expect(client instanceof RpcClient).toBeTruthy()
   expect(global.worker.eventNames()).toEqual(['message', 'error'])
   global.worker.emit('error', {
     message: 'Some error',
@@ -72,7 +72,7 @@ test('Client.constructor()', () => {
   })
 })
 
-test('Client.call()', async () => {
+test('RpcClient.call()', async () => {
   const result = await client.call('add', { x: 1, y: 1 })
   expect(result).toBe(2)
   await expect(() => client.call('length')).rejects.toThrow()
