@@ -1,10 +1,15 @@
 {
-  "include": ["src"],
+  "include": [
+    "src"
+  ],
   "compilerOptions": {
     "outDir": "dist",
     "target": "es2020",
-    "types": ["node"],
-    "lib": ["dom", "esnext", "webworker"],
+    "lib": [
+      "dom",
+      "esnext",
+      "webworker"
+    ],
     "declaration": true,
     "moduleResolution": "node",
     "sourceMap": true,
