@@ -76,9 +76,6 @@ test('RpcClient.call()', async () => {
   const result = await client.call('add', { x: 1, y: 1 })
   expect(result).toBe(2)
   await expect(() => client.call('length')).rejects.toThrow()
-  await expect(() =>
-    client.call('task', null, { timeout: 100 }),
-  ).rejects.toThrow()
   await expect(() => client.call('error')).rejects.toThrow('err is not defined')
 
   const buffer = new ArrayBuffer(0xff)

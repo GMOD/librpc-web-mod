@@ -16,9 +16,9 @@
     "url": "https://github.com/GMOD/librpc-web"
   },
   "author": {
-    "name": "Vladimir Bykov",
-    "email": "broadsw.rd@yandex.ru",
-    "url": "https://github.com/broadsw0rd"
+    "name": "Colin Diesh",
+    "email": "colin.diesh@gmail.com",
+    "url": "https://github.com/cmdcolin"
   },
   "files": [
     "dist",
@@ -41,12 +41,12 @@
   "scripts": {
     "clean": "rimraf dist",
     "lint": "eslint --report-unused-disable-directives --max-warnings 0",
-    "prebuild": "npm run clean",
-    "build": "npm run build:esm && npm run build:cjs",
+    "prebuild": "yarn clean",
+    "build": "yarn build:esm && yarn build:cjs",
     "build:esm": "tsc --outDir esm",
     "build:cjs": "tsc --module commonjs --outDir dist",
     "test": "vitest run",
-    "preversion": "npm test && npm run build",
+    "preversion": "yarn test --run && yarn build",
     "postversion": "git push --follow-tags"
   }
 }

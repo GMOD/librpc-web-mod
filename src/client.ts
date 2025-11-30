@@ -15,7 +15,6 @@ let counter = 0
 
 export default class RpcClient extends EventEmitter {
   protected calls = new Map<string, (data: unknown) => void>()
-  protected timeouts = new Map<string, ReturnType<typeof setTimeout>>()
   protected errors = new Map<string, (error: Error) => void>()
 
   constructor(public worker: Worker) {
@@ -67,11 +66,6 @@ export default class RpcClient extends EventEmitter {
   }
 
   protected clear(uid: string) {
-    const timeout = this.timeouts.get(uid)
-    if (timeout !== undefined) {
-      clearTimeout(timeout)
-    }
-    this.timeouts.delete(uid)
     this.calls.delete(uid)
     this.errors.delete(uid)
   }
@@ -79,19 +73,10 @@ export default class RpcClient extends EventEmitter {
   call(
     method: string,
     data: unknown,
-    {
-      timeout = 2000,
-      transferables = [],
-    }: { timeout?: number; transferables?: Transferable[] } = {},
+    { transferables = [] }: { transferables?: Transferable[] } = {},
   ) {
     const uid = String(++counter)
     return new Promise((resolve, reject) => {
-      this.timeouts.set(
-        uid,
-        setTimeout(() => {
-          this.reject(uid, new Error(`Timeout exceeded for RPC method "${method}"`))
-        }, timeout),
-      )
       this.calls.set(uid, resolve)
       this.errors.set(uid, reject)
       this.worker.postMessage({ method, uid, data, libRpc: true }, transferables)
