@@ -24,7 +24,8 @@ function isRpcResult(value: unknown): value is RpcResult {
   return (
     typeof value === 'object' &&
     value !== null &&
-    '__rpcResult' in value
+    '__rpcResult' in value &&
+    (value as RpcResult).__rpcResult === true
   )
 }
 

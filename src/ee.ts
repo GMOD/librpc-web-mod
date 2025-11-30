@@ -21,7 +21,7 @@ export default class EventEmitter {
    * emitter.on('event', listener)
    */
   on(event: string, listener: (arg: unknown) => void) {
-    var listeners = this.events[event]
+    let listeners = this.events[event]
 
     if (!listeners) {
       listeners = []
@@ -43,10 +43,10 @@ export default class EventEmitter {
    * emitter.off('event', listener)
    */
   off(event: string, listener: (arg: unknown) => void) {
-    var listeners = this.events[event]
+    const listeners = this.events[event]
 
     if (listeners) {
-      var idx = listeners.indexOf(listener)
+      const idx = listeners.indexOf(listener)
       if (idx !== -1) {
         listeners.splice(idx, 1)
       }
@@ -65,10 +65,10 @@ export default class EventEmitter {
    * emitter.emit('event', { foo: 'bar' })
    */
   emit(event: string, data: any) {
-    var listeners = this.events[event]
+    const listeners = this.events[event]
 
     if (listeners) {
-      for (var i = 0; i < listeners.length; i++) {
+      for (let i = 0; i < listeners.length; i++) {
         listeners[i](data)
       }
     }

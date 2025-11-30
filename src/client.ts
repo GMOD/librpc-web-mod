@@ -3,60 +3,35 @@ import { uuid } from './utils'
 import { deserializeError } from 'serialize-error'
 
 interface RpcClientOptions {
-  /** List of server workers */
   workers: Worker[]
 }
 
 interface RpcMessageData {
-  /** Remote call uid */
   uid: string
-  /** `true` flag */
   libRpc: true
-  /** Error description */
   error?: string
-  /** Remote procedure name */
   method?: string
-  /** Server event name */
   eventName?: string
-  /** Procedure result or event data */
   data: any
 }
 
-
 export default class RpcClient extends EventEmitter {
-  public workers: Worker[]
-  protected idx = 0
+  public worker: Worker
   protected calls: Record<string, (data: any) => void> = {}
   protected timeouts: Record<string, NodeJS.Timeout> = {}
   protected errors: Record<string, (error: Error) => void> = {}
 
-  /**
-   * Client could be connected to several workers for better CPU utilization.
-   * Requests are sent to an exact worker by round robin algorithm.
-   * @param options - Rpc Client options
-   */
+  get workers() {
+    return [this.worker]
+  }
+
   constructor({ workers }: RpcClientOptions) {
     super()
-    this.workers = [...workers]
+    this.worker = workers[0]!
     this.handler = this.handler.bind(this)
     this.catch = this.catch.bind(this)
-    this.init()
-  }
-
-  /**
-   * Subscribtion to web workers events
-   */
-  protected init() {
-    this.workers.forEach(this.listen, this)
-  }
-
-  /**
-   * Subsrciption to exact worker
-   * @param worker - Server worker
-   */
-  protected listen(worker: Worker) {
-    worker.addEventListener('message', this.handler)
-    worker.addEventListener('error', this.catch)
+    this.worker.addEventListener('message', this.handler)
+    this.worker.addEventListener('error', this.catch)
   }
 
   /**
@@ -153,11 +128,7 @@ export default class RpcClient extends EventEmitter {
       )
       this.calls[uid] = resolve
       this.errors[uid] = reject
-      this.workers[this.idx].postMessage(
-        { method, uid, data, libRpc: true },
-        transferables,
-      )
-      this.idx = ++this.idx % this.workers.length // round robin
+      this.worker.postMessage({ method, uid, data, libRpc: true }, transferables)
     })
   }
 }

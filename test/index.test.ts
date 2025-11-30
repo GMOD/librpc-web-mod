@@ -65,7 +65,6 @@ test('RpcServer.emit()', () => {
 
 test('RpcClient.constructor() should create new RPC client', () => {
   expect(client instanceof WebRPC.Client).toBeTruthy()
-  expect(client.workers.length).toEqual(1)
   expect(global.worker.eventNames()).toEqual(['message', 'error'])
   global.worker.emit('error', {
     message: 'Some error',
@@ -77,7 +76,6 @@ test('RpcClient.constructor() should create new RPC client', () => {
 test('RpcClient.call()', async () => {
   var result = await client.call('add', { x: 1, y: 1 })
   expect(result).toBe(2)
-  expect(client.idx).toBe(0)
   await expect(() => client.call('length')).rejects.toThrow()
   await expect(() =>
     client.call('task', null, { timeout: 100 }),
