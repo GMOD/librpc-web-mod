@@ -1,7 +1,6 @@
 import { deserializeError } from 'serialize-error'
 
 import EventEmitter from './ee.ts'
-import { uuid } from './utils.ts'
 
 interface RpcMessageData {
   uid: string
@@ -12,10 +11,12 @@ interface RpcMessageData {
   data: unknown
 }
 
+let counter = 0
+
 export default class RpcClient extends EventEmitter {
-  protected calls: Record<string, (data: unknown) => void> = {}
-  protected timeouts: Record<string, NodeJS.Timeout> = {}
-  protected errors: Record<string, (error: Error) => void> = {}
+  protected calls = new Map<string, (data: unknown) => void>()
+  protected timeouts = new Map<string, ReturnType<typeof setTimeout>>()
+  protected errors = new Map<string, (error: Error) => void>()
 
   constructor(public worker: Worker) {
     super()
@@ -50,7 +51,7 @@ export default class RpcClient extends EventEmitter {
   }
 
   protected reject(uid: string, error: string | Error) {
-    const errorFn = this.errors[uid]
+    const errorFn = this.errors.get(uid)
     if (errorFn) {
       errorFn(deserializeError(error))
       this.clear(uid)
@@ -58,7 +59,7 @@ export default class RpcClient extends EventEmitter {
   }
 
   protected resolve(uid: string, data: unknown) {
-    const callFn = this.calls[uid]
+    const callFn = this.calls.get(uid)
     if (callFn) {
       callFn(data)
       this.clear(uid)
@@ -66,16 +67,13 @@ export default class RpcClient extends EventEmitter {
   }
 
   protected clear(uid: string) {
-    const timeout = this.timeouts[uid]
-    if (timeout) {
+    const timeout = this.timeouts.get(uid)
+    if (timeout !== undefined) {
       clearTimeout(timeout)
     }
-    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-    delete this.timeouts[uid]
-    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-    delete this.calls[uid]
-    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-    delete this.errors[uid]
+    this.timeouts.delete(uid)
+    this.calls.delete(uid)
+    this.errors.delete(uid)
   }
 
   call(
@@ -86,13 +84,16 @@ export default class RpcClient extends EventEmitter {
       transferables = [],
     }: { timeout?: number; transferables?: Transferable[] } = {},
   ) {
-    const uid = uuid()
+    const uid = String(++counter)
     return new Promise((resolve, reject) => {
-      this.timeouts[uid] = setTimeout(() => {
-        this.reject(uid, new Error(`Timeout exceeded for RPC method "${method}"`))
-      }, timeout)
-      this.calls[uid] = resolve
-      this.errors[uid] = reject
+      this.timeouts.set(
+        uid,
+        setTimeout(() => {
+          this.reject(uid, new Error(`Timeout exceeded for RPC method "${method}"`))
+        }, timeout),
+      )
+      this.calls.set(uid, resolve)
+      this.errors.set(uid, reject)
       this.worker.postMessage({ method, uid, data, libRpc: true }, transferables)
     })
   }

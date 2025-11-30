@@ -1,11 +1,3 @@
-import RpcClient from './client.ts'
-import RpcServer, { rpcResult } from './server.ts'
-
-export default {
-  Client: RpcClient,
-  Server: RpcServer,
-  rpcResult,
-}
-export { rpcResult }
-export type { RpcResult } from './server'
-export type { RpcClient, RpcServer }
+export { default as Client } from './client.ts'
+export { default as Server, rpcResult } from './server.ts'
+export type { RpcResult } from './server.ts'

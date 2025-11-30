@@ -1,7 +1,8 @@
 // @ts-nocheck
-import WebRPC from '../src/index.ts'
+import { expect, test } from 'vitest'
+import { EventEmitter } from 'events'
 
-const EventEmitter = require('events')
+import { Client, Server } from '../src/index.ts'
 
 class EventTarget extends EventEmitter {
   addEventListener(event, listener) {
@@ -23,7 +24,7 @@ function wait(time) {
   return new Promise(resolve => setTimeout(resolve, time))
 }
 
-const server = new WebRPC.Server({
+const server = new Server({
   add({ x, y }) {
     return x + y
   },
@@ -38,10 +39,10 @@ const server = new WebRPC.Server({
   },
 })
 
-const client = new WebRPC.Client(global.worker)
+const client = new Client(global.worker)
 
-test('RpcServer.constructor()', () => {
-  expect(server instanceof WebRPC.Server).toBeTruthy()
+test('Server.constructor()', () => {
+  expect(server instanceof Server).toBeTruthy()
   expect(Object.keys(server.methods)).toEqual([
     'add',
     'task',
@@ -51,7 +52,7 @@ test('RpcServer.constructor()', () => {
   expect(global.self.eventNames()).toEqual(['message'])
 })
 
-test('RpcServer.emit()', () => {
+test('Server.emit()', () => {
   function listener(data) {
     expect(data).toEqual({ foo: 'bar' })
   }
@@ -61,8 +62,8 @@ test('RpcServer.emit()', () => {
   server.emit('event', { foo: 'bar' })
 })
 
-test('RpcClient.constructor() should create new RPC client', () => {
-  expect(client instanceof WebRPC.Client).toBeTruthy()
+test('Client.constructor()', () => {
+  expect(client instanceof Client).toBeTruthy()
   expect(global.worker.eventNames()).toEqual(['message', 'error'])
   global.worker.emit('error', {
     message: 'Some error',
@@ -71,7 +72,7 @@ test('RpcClient.constructor() should create new RPC client', () => {
   })
 })
 
-test('RpcClient.call()', async () => {
+test('Client.call()', async () => {
   const result = await client.call('add', { x: 1, y: 1 })
   expect(result).toBe(2)
   await expect(() => client.call('length')).rejects.toThrow()

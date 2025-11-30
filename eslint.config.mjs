@@ -14,7 +14,6 @@ export default defineConfig(
       'esm/*',
       'example/*',
       'eslint.config.mjs',
-      'jest.config.js',
       'test/*',
     ],
   },
