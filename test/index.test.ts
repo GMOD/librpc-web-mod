@@ -1,7 +1,7 @@
-//@ts-nocheck
-var EventEmitter = require('events')
+// @ts-nocheck
+import WebRPC from '../src/index.ts'
 
-import WebRPC from '../src/'
+const EventEmitter = require('events')
 
 class EventTarget extends EventEmitter {
   addEventListener(event, listener) {
@@ -23,7 +23,7 @@ function wait(time) {
   return new Promise(resolve => setTimeout(resolve, time))
 }
 
-var server = new WebRPC.Server({
+const server = new WebRPC.Server({
   add({ x, y }) {
     return x + y
   },
@@ -32,15 +32,13 @@ var server = new WebRPC.Server({
   },
   error() {
     return err
-  }, // eslint-disable-line
+  },
   transfer(buffer) {
     return { buffer }
   },
 })
 
-var client = new WebRPC.Client({
-  workers: [global.worker],
-})
+const client = new WebRPC.Client(global.worker)
 
 test('RpcServer.constructor()', () => {
   expect(server instanceof WebRPC.Server).toBeTruthy()
@@ -74,15 +72,13 @@ test('RpcClient.constructor() should create new RPC client', () => {
 })
 
 test('RpcClient.call()', async () => {
-  var result = await client.call('add', { x: 1, y: 1 })
+  const result = await client.call('add', { x: 1, y: 1 })
   expect(result).toBe(2)
   await expect(() => client.call('length')).rejects.toThrow()
   await expect(() =>
     client.call('task', null, { timeout: 100 }),
   ).rejects.toThrow()
-  await expect(() => client.call('error')).rejects.toThrowError(
-    'err is not defined',
-  )
+  await expect(() => client.call('error')).rejects.toThrow('err is not defined')
 
   const buffer = new ArrayBuffer(0xff)
 

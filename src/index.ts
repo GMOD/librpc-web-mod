@@ -1,5 +1,5 @@
-import RpcClient from './client'
-import RpcServer, { rpcResult } from './server'
+import RpcClient from './client.ts'
+import RpcServer, { rpcResult } from './server.ts'
 
 export default {
   Client: RpcClient,
@@ -9,4 +9,3 @@ export default {
 export { rpcResult }
 export type { RpcResult } from './server'
 export type { RpcClient, RpcServer }
-

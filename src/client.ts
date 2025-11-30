@@ -1,48 +1,37 @@
-import EventEmitter from './ee'
-import { uuid } from './utils'
 import { deserializeError } from 'serialize-error'
 
-interface RpcClientOptions {
-  workers: Worker[]
-}
+import EventEmitter from './ee.ts'
+import { uuid } from './utils.ts'
 
 interface RpcMessageData {
   uid: string
-  libRpc: true
+  libRpc?: true
   error?: string
   method?: string
   eventName?: string
-  data: any
+  data: unknown
 }
 
 export default class RpcClient extends EventEmitter {
-  public worker: Worker
-  protected calls: Record<string, (data: any) => void> = {}
+  protected calls: Record<string, (data: unknown) => void> = {}
   protected timeouts: Record<string, NodeJS.Timeout> = {}
   protected errors: Record<string, (error: Error) => void> = {}
 
-  get workers() {
-    return [this.worker]
-  }
-
-  constructor({ workers }: RpcClientOptions) {
+  constructor(public worker: Worker) {
     super()
-    this.worker = workers[0]!
-    this.handler = this.handler.bind(this)
-    this.catch = this.catch.bind(this)
-    this.worker.addEventListener('message', this.handler)
-    this.worker.addEventListener('error', this.catch)
+    this.worker.addEventListener('message', (e: MessageEvent<RpcMessageData>) => {
+      this.handler(e)
+    })
+    this.worker.addEventListener('error', (e: ErrorEvent) => {
+      this.catch(e)
+    })
   }
 
-  /**
-   * Message handler
-   * @param e - Event object
-   */
   protected handler(e: MessageEvent<RpcMessageData>) {
     const { uid, error, method, eventName, data, libRpc } = e.data
-
-    if (!libRpc) return // ignore non-librpc messages
-
+    if (!libRpc) {
+      return
+    }
     if (error) {
       this.reject(uid, error)
     } else if (method) {
@@ -52,12 +41,7 @@ export default class RpcClient extends EventEmitter {
     }
   }
 
-  /**
-   * Error handler
-   * https://www.nczonline.net/blog/2009/08/25/web-workers-errors-and-debugging/
-   * @param e - Error event
-   */
-  catch(e: ErrorEvent) {
+  protected catch(e: ErrorEvent) {
     this.emit('error', {
       message: e.message,
       lineno: e.lineno,
@@ -65,71 +49,51 @@ export default class RpcClient extends EventEmitter {
     })
   }
 
-  /**
-   * Handle remote procedure call error
-   * @param uid - Remote call uid
-   * @param error - Error message
-   */
   protected reject(uid: string, error: string | Error) {
-    if (this.errors[uid]) {
-      this.errors[uid](deserializeError(error))
+    const errorFn = this.errors[uid]
+    if (errorFn) {
+      errorFn(deserializeError(error))
       this.clear(uid)
     }
   }
 
-  /**
-   * Handle remote procedure call response
-   * @param uid - Remote call uid
-   * @param data - Response data
-   */
-  protected resolve(uid: string, data: any) {
-    if (this.calls[uid]) {
-      this.calls[uid](data)
+  protected resolve(uid: string, data: unknown) {
+    const callFn = this.calls[uid]
+    if (callFn) {
+      callFn(data)
       this.clear(uid)
     }
   }
 
-  /**
-   * Clear inner references to remote call
-   * @param uid - Remote call uid
-   */
   protected clear(uid: string) {
-    clearTimeout(this.timeouts[uid])
+    const timeout = this.timeouts[uid]
+    if (timeout) {
+      clearTimeout(timeout)
+    }
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
     delete this.timeouts[uid]
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
     delete this.calls[uid]
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
     delete this.errors[uid]
   }
 
-  /**
-   * Remote procedure call.
-   * Error would be thrown, if:
-   * - it happened during procedure
-   * - you try to call an unexisted procedure
-   * - procedure execution takes more than timeout
-   * @param method - Remote procedure name
-   * @param data - Request data
-   * @param options - Options (timeout in ms, transferables array)
-   * @returns Remote procedure promise
-   */
   call(
     method: string,
-    data: any,
-    { timeout = 2000, transferables = [] }: { timeout?: number; transferables?: Transferable[] } = {},
+    data: unknown,
+    {
+      timeout = 2000,
+      transferables = [],
+    }: { timeout?: number; transferables?: Transferable[] } = {},
   ) {
     const uid = uuid()
     return new Promise((resolve, reject) => {
-      this.timeouts[uid] = setTimeout(
-        () =>
-          this.reject(
-            uid,
-            new Error(`Timeout exceeded for RPC method "${method}"`),
-          ),
-        timeout,
-      )
+      this.timeouts[uid] = setTimeout(() => {
+        this.reject(uid, new Error(`Timeout exceeded for RPC method "${method}"`))
+      }, timeout)
       this.calls[uid] = resolve
       this.errors[uid] = reject
       this.worker.postMessage({ method, uid, data, libRpc: true }, transferables)
     })
   }
 }
-
