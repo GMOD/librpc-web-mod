@@ -11,7 +11,8 @@ class EventTarget extends EventEmitter {
 }
 
 global.self = new EventTarget()
-global.self.postMessage = function (data) {
+global.self.postMessage = function (data, transferables) {
+  global.self.lastTransferables = transferables
   global.worker.emit('message', { data })
 }
 
@@ -82,4 +83,10 @@ test('RpcClient.call()', async () => {
 
   const r = await client.call('transfer', buffer)
   expect(r.buffer).toEqual(buffer)
+})
+
+test('peekTransferables auto-detects transferables in response', async () => {
+  const buffer = new ArrayBuffer(0xff)
+  await client.call('transfer', buffer)
+  expect(global.self.lastTransferables).toEqual([buffer])
 })

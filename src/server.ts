@@ -1,5 +1,37 @@
 import { ErrorObject, serializeError } from 'serialize-error'
 
+function isTransferable(object: unknown): object is Transferable {
+  try {
+    return (
+      object instanceof ArrayBuffer ||
+      object instanceof ImageBitmap ||
+      object instanceof OffscreenCanvas ||
+      object instanceof MessagePort
+    )
+  } catch {
+    return false
+  }
+}
+
+function isObject(data: unknown): data is Record<string, unknown> {
+  return Object(data) === data
+}
+
+function peekTransferables(data: unknown) {
+  const result: Transferable[] = []
+  if (isTransferable(data)) {
+    result.push(data)
+  } else if (isObject(data)) {
+    for (const key in data) {
+      const val = data[key]
+      if (isTransferable(val)) {
+        result.push(val)
+      }
+    }
+  }
+  return result
+}
+
 export interface RpcResult {
   __rpcResult: true
   value: unknown
@@ -68,7 +100,8 @@ export default class RpcServer {
         const { value, transferables } = response
         self.postMessage({ uid, method, data: value, libRpc: true }, transferables)
       } else {
-        self.postMessage({ uid, method, data: response, libRpc: true })
+        const transferables = peekTransferables(response)
+        self.postMessage({ uid, method, data: response, libRpc: true }, transferables)
       }
     } catch (e) {
       this.throw(uid, serializeError(e))
@@ -79,7 +112,8 @@ export default class RpcServer {
     self.postMessage({ uid, error, libRpc: true })
   }
 
-  emit(eventName: string, data: unknown, transferables: Transferable[] = []) {
-    self.postMessage({ eventName, data, libRpc: true }, transferables)
+  emit(eventName: string, data: unknown, transferables?: Transferable[]) {
+    const transfer = transferables ?? peekTransferables(data)
+    self.postMessage({ eventName, data, libRpc: true }, transfer)
   }
 }

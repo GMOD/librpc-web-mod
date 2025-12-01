@@ -46,7 +46,7 @@
     "build": "yarn build:esm && yarn build:cjs",
     "build:esm": "tsc --outDir esm",
     "build:cjs": "tsc --module commonjs --outDir dist",
-    "test": "vitest run",
+    "test": "vitest",
     "preversion": "yarn test --run && yarn build",
     "postversion": "git push --follow-tags"
   }
