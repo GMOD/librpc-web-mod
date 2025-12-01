@@ -38,6 +38,7 @@
   },
   "scripts": {
     "clean": "rimraf dist",
+    "format": "prettier --write .",
     "lint": "eslint --report-unused-disable-directives --max-warnings 0",
     "prebuild": "yarn clean",
     "build": "yarn build:esm && yarn build:cjs",

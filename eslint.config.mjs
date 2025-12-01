@@ -5,17 +5,7 @@ import tseslint from 'typescript-eslint'
 
 export default defineConfig(
   {
-    ignores: [
-      'webpack.config.js',
-      'benchmarks/*',
-      'dist/*',
-      'esm_*/*',
-      'profile-bam.js',
-      'esm/*',
-      'example/*',
-      'eslint.config.mjs',
-      'test/*',
-    ],
+    ignores: ['dist/*', 'esm/*', 'eslint.config.mjs', 'test/*'],
   },
   {
     languageOptions: {
@@ -51,7 +41,8 @@ export default defineConfig(
       ],
 
       '@typescript-eslint/ban-ts-comment': 'off',
-
+      '@typescript-eslint/no-base-to-string': 'off',
+      '@typescript-eslint/restrict-template-expressions': 'off',
       '@typescript-eslint/no-unused-vars': [
         'warn',
         {

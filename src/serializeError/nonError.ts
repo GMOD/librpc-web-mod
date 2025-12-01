@@ -1,14 +1,5 @@
 const isNonErrorSymbol = Symbol('isNonError')
 
-function defineProperty(object: object, key: string | symbol, value: unknown) {
-  Object.defineProperty(object, key, {
-    value,
-    writable: false,
-    enumerable: false,
-    configurable: false,
-  })
-}
-
 function stringify(value: unknown) {
   if (value === undefined) {
     return 'undefined'
@@ -58,7 +49,7 @@ function stringify(value: unknown) {
 }
 
 export default class NonError extends Error {
-  value: unknown
+  declare value: unknown
 
   constructor(value: unknown) {
     if (NonError.isNonError(value)) {
@@ -73,11 +64,12 @@ export default class NonError extends Error {
 
     super(`Non-error value: ${stringify(value)}`)
 
-    defineProperty(this, 'name', 'NonError')
-    defineProperty(this, isNonErrorSymbol, true)
-    defineProperty(this, 'isNonError', true)
-    defineProperty(this, 'value', value)
-    this.value = value
+    Object.defineProperties(this, {
+      name: { value: 'NonError' },
+      [isNonErrorSymbol]: { value: true },
+      isNonError: { value: true },
+      value: { value },
+    })
   }
 
   static isNonError(value: unknown): value is NonError {

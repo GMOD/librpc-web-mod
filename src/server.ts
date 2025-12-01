@@ -55,11 +55,7 @@ interface RpcMessageData {
 }
 
 function isRpcResult(value: unknown): value is RpcResult {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    '__rpcResult' in value
-  )
+  return typeof value === 'object' && value !== null && '__rpcResult' in value
 }
 
 export default class RpcServer {
@@ -98,10 +94,16 @@ export default class RpcServer {
     try {
       if (isRpcResult(response)) {
         const { value, transferables } = response
-        self.postMessage({ uid, method, data: value, libRpc: true }, transferables)
+        self.postMessage(
+          { uid, method, data: value, libRpc: true },
+          transferables,
+        )
       } else {
         const transferables = peekTransferables(response)
-        self.postMessage({ uid, method, data: response, libRpc: true }, transferables)
+        self.postMessage(
+          { uid, method, data: response, libRpc: true },
+          transferables,
+        )
       }
     } catch (e) {
       this.throw(uid, serializeError(e))

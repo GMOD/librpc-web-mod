@@ -1,5 +1,5 @@
-import NonError from './nonError.ts'
 import { errorConstructors, errorFactories } from './errorConstructors.ts'
+import NonError from './nonError.ts'
 
 const errorProperties = [
   { property: 'name', enumerable: false },
@@ -159,12 +159,14 @@ function destroyCircular({
 
   if (serialize || to instanceof Error) {
     for (const { property, enumerable } of errorProperties) {
-      const val = (from as Record<string, unknown>)[property]
+      const val = from[property]
       if (val !== undefined && val !== null) {
         Object.defineProperty(to, property, {
           value:
             isErrorLike(val) || Array.isArray(val)
-              ? continueDestroyCircular(val as unknown as Record<string, unknown>)
+              ? continueDestroyCircular(
+                  val as unknown as Record<string, unknown>,
+                )
               : val,
           enumerable: forceEnumerable ? true : enumerable,
           configurable: true,

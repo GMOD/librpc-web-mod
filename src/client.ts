@@ -1,6 +1,5 @@
-import { deserializeError } from './serializeError/index.ts'
-
 import EventEmitter from './ee.ts'
+import { deserializeError } from './serializeError/index.ts'
 
 interface RpcMessageData {
   uid: string
@@ -19,9 +18,12 @@ export default class RpcClient extends EventEmitter {
 
   constructor(public worker: Worker) {
     super()
-    this.worker.addEventListener('message', (e: MessageEvent<RpcMessageData>) => {
-      this.handler(e)
-    })
+    this.worker.addEventListener(
+      'message',
+      (e: MessageEvent<RpcMessageData>) => {
+        this.handler(e)
+      },
+    )
     this.worker.addEventListener('error', (e: ErrorEvent) => {
       this.catch(e)
     })
@@ -79,7 +81,10 @@ export default class RpcClient extends EventEmitter {
     return new Promise((resolve, reject) => {
       this.calls.set(uid, resolve)
       this.errors.set(uid, reject)
-      this.worker.postMessage({ method, uid, data, libRpc: true }, transferables)
+      this.worker.postMessage(
+        { method, uid, data, libRpc: true },
+        transferables,
+      )
     })
   }
 }
