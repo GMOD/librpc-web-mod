@@ -27,9 +27,6 @@
   ],
   "main": "dist/index.js",
   "module": "esm/index.js",
-  "dependencies": {
-    "serialize-error": "^8.1.0"
-  },
   "devDependencies": {
     "eslint": "^9.39.1",
     "eslint-plugin-import": "^2.32.0",

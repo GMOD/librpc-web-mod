@@ -1,4 +1,4 @@
-import { deserializeError } from 'serialize-error'
+import { deserializeError } from './serializeError/index.ts'
 
 import EventEmitter from './ee.ts'
 

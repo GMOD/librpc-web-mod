@@ -1,4 +1,4 @@
-import { ErrorObject, serializeError } from 'serialize-error'
+import { ErrorObject, serializeError } from './serializeError/index.ts'
 
 function isTransferable(object: unknown): object is Transferable {
   try {
@@ -22,7 +22,7 @@ function peekTransferables(data: unknown) {
   if (isTransferable(data)) {
     result.push(data)
   } else if (isObject(data)) {
-    for (const key in data) {
+    for (const key of Object.keys(data)) {
       const val = data[key]
       if (isTransferable(val)) {
         result.push(val)
