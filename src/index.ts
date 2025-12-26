@@ -3,7 +3,7 @@ export { default as RpcServer, rpcResult } from './server.ts'
 export type { RpcResult } from './server.ts'
 export {
   deserializeError,
-  serializeError,
   isErrorLike,
+  serializeError,
 } from './serializeError/index.ts'
 export type { ErrorObject } from './serializeError/index.ts'
