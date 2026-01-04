@@ -128,7 +128,11 @@ test('should serialize the cause property', () => {
 
   const serialized = serializeError(error) as {
     message: string
-    cause: { name: string; message: string; cause: { name: string; message: string } }
+    cause: {
+      name: string
+      message: string
+      cause: { name: string; message: string }
+    }
   }
   expect(serialized.message).toBe('outer error')
   expect(serialized.cause.name).toBe('Error')
@@ -399,7 +403,9 @@ test('should serialize properties up to Options.maxDepth levels deep', () => {
 
 test('should identify serialized errors', () => {
   expect(
-    isErrorLike(serializeError(new Error("I'm missing more than just your body"))),
+    isErrorLike(
+      serializeError(new Error("I'm missing more than just your body")),
+    ),
   ).toBe(true)
   expect(isErrorLike(serializeError(new Error()))).toBe(true)
   expect(
@@ -421,7 +427,8 @@ test('should identify serialized errors', () => {
   expect(
     isErrorLike({
       name: 'Edwin Monton',
-      message: "We've been trying to reach you about your car's extended warranty",
+      message:
+        "We've been trying to reach you about your car's extended warranty",
       medium: 'Glass bottle in ocean',
     }),
   ).toBe(false)
